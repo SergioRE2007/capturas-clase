@@ -8,41 +8,74 @@
 <body>
   <header>
     <h1>📸 Capturas de Clase</h1>
-    <p class="hint">Deja esta ventana abierta mientras capturas (puedes minimizarla).</p>
+    <p class="hint">Deja esta ventana abierta mientras capturas (puedes minimizarla). Puedes usar otras pestañas: la de Meet solo tiene que seguir abierta.</p>
   </header>
 
   <section>
-    <h2>1 · Carpeta de destino</h2>
+    <h2>1 · Carpeta principal</h2>
     <div class="row">
       <button id="pickFolder">Elegir carpeta…</button>
       <span id="folderName" class="muted">Ninguna carpeta elegida</span>
     </div>
-    <label class="check"><input type="checkbox" id="sessionFolder" checked> Crear una subcarpeta por sesión (clase_fecha_hora)</label>
+    <p id="pathPreview" class="muted small"></p>
   </section>
 
   <section>
-    <h2>2 · Pestaña a capturar</h2>
+    <h2>2 · Clase</h2>
+    <p id="sourceHelp" class="help">Entra en la Meet de tu clase y <b>pulsa el icono de la extensión estando en esa pestaña</b>. Se captura sola, sin diálogos.</p>
+    <div id="classBox" class="hidden">
+      <div id="newClass" class="warn hidden">Esta es una clase nueva. ¿Cómo se llama? (p. ej. «Programación»). La recordaré la próxima vez que entres en este enlace.<br><span class="small muted">Enlace: <span id="newCode"></span></span></div>
+      <div class="row">
+        <label class="inline">Clase
+          <input id="className" list="classList" placeholder="p. ej. Programación" autocomplete="off">
+        </label>
+        <button id="saveClass">Guardar</button>
+        <span id="meetCode" class="muted small"></span>
+      </div>
+      <datalist id="classList"></datalist>
+    </div>
     <div class="row">
-      <button id="pickSource">Elegir pestaña de Meet…</button>
-      <span id="sourceName" class="muted">Sin fuente</span>
+      <span id="sourceName" class="muted">Aún no has pulsado el icono en tu Meet</span>
     </div>
     <div id="stage" class="stage hidden">
       <video id="video" muted playsinline></video>
       <div id="cropBox" class="crop hidden"></div>
+      <div id="detect" class="badge hidden"></div>
     </div>
-    <div class="row small" id="cropRow">
-      <span class="muted">Arrastra sobre la vista previa para recortar solo la presentación.</span>
-      <button id="resetCrop" class="link">Quitar recorte</button>
+    <div class="row small">
+      <span id="cropHint" class="muted"></span>
+      <button id="resetCrop" class="link hidden">Quitar recorte</button>
+      <button id="pickSource" class="link">¿No funciona? Elegir la pestaña a mano…</button>
     </div>
   </section>
 
   <section>
     <h2>3 · Ajustes</h2>
     <div class="grid">
-      <label>Intervalo (segundos)
+      <label>Qué capturar
+        <select id="mode">
+          <option value="auto">Solo lo que comparte el profe</option>
+          <option value="tab">La pestaña entera</option>
+          <option value="manual">Recorte a mano</option>
+        </select>
+      </label>
+      <label>Carpetas dentro de cada clase
+        <select id="layout">
+          <option value="day">Una por día</option>
+          <option value="session">Una por sesión (día y hora)</option>
+          <option value="flat">Todo junto</option>
+        </select>
+      </label>
+      <label>Nombre de las imágenes
+        <select id="naming">
+          <option value="num">img001, img002…</option>
+          <option value="numtime">img001_10-32-05…</option>
+        </select>
+      </label>
+      <label title="Cada cuántos segundos mira si la presentación ha cambiado">Cada cuántos segundos mirar
         <input type="number" id="interval" min="1" max="120" step="1" value="3">
       </label>
-      <label>Cambio mínimo para guardar (%)
+      <label title="Más bajo = guarda con cambios más pequeños; más alto = guarda menos">Cambio mínimo para guardar (%)
         <input type="number" id="sensitivity" min="0.1" max="50" step="0.1" value="1">
       </label>
       <label>Formato
@@ -52,12 +85,19 @@
         </select>
       </label>
     </div>
+    <label class="check"><input type="checkbox" id="autoStart" checked> Empezar a capturar sola al pulsar el icono en una Meet</label>
+    <details id="classesDetails">
+      <summary>Clases guardadas (<span id="classCount">0</span>)</summary>
+      <ul id="classes" class="classes"></ul>
+    </details>
   </section>
 
+  <div id="permWarn" class="warn big hidden">⚠ El navegador necesita que le vuelvas a dar permiso para guardar en la carpeta. <b>Pulsa ▶ Iniciar</b> y acepta (si te deja, elige «Permitir siempre»).</div>
+
   <section class="controls">
-    <button id="start" class="primary">▶ Iniciar</button>
+    <button id="start" class="primary" disabled>▶ Iniciar</button>
     <button id="stop" class="danger" disabled>■ Parar</button>
-    <button id="captureNow">Capturar ahora</button>
+    <button id="captureNow" disabled>Capturar ahora</button>
   </section>
 
   <section>

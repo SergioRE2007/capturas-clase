@@ -1,10 +1,12 @@
 {
   "manifest_version": 3,
   "name": "Capturas de Clase",
-  "version": "1.0.0",
-  "description": "Hace capturas periódicas de una pestaña (p. ej. Google Meet) y solo guarda las que cambian.",
+  "version": "2.0.0",
+  "description": "Captura lo que comparte el profesor en Google Meet, solo cuando cambia, y lo guarda en una carpeta por asignatura.",
+  "permissions": ["tabCapture", "storage", "scripting"],
+  "host_permissions": ["https://meet.google.com/*"],
   "action": {
-    "default_title": "Capturas de Clase",
+    "default_title": "Capturas de Clase — pulsa estando en la pestaña de Meet",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",
@@ -21,5 +23,12 @@
   "background": {
     "service_worker": "background.js"
   },
+  "content_scripts": [
+    {
+      "matches": ["https://meet.google.com/*"],
+      "js": ["meet.js"],
+      "run_at": "document_idle"
+    }
+  ],
   "minimum_chrome_version": "116"
 }
