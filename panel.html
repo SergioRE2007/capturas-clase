@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Capturas de Clase</title>
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <header>
+    <h1>📸 Capturas de Clase</h1>
+    <p class="hint">Deja esta ventana abierta mientras capturas (puedes minimizarla).</p>
+  </header>
+
+  <section>
+    <h2>1 · Carpeta de destino</h2>
+    <div class="row">
+      <button id="pickFolder">Elegir carpeta…</button>
+      <span id="folderName" class="muted">Ninguna carpeta elegida</span>
+    </div>
+    <label class="check"><input type="checkbox" id="sessionFolder" checked> Crear una subcarpeta por sesión (clase_fecha_hora)</label>
+  </section>
+
+  <section>
+    <h2>2 · Pestaña a capturar</h2>
+    <div class="row">
+      <button id="pickSource">Elegir pestaña de Meet…</button>
+      <span id="sourceName" class="muted">Sin fuente</span>
+    </div>
+    <div id="stage" class="stage hidden">
+      <video id="video" muted playsinline></video>
+      <div id="cropBox" class="crop hidden"></div>
+    </div>
+    <div class="row small" id="cropRow">
+      <span class="muted">Arrastra sobre la vista previa para recortar solo la presentación.</span>
+      <button id="resetCrop" class="link">Quitar recorte</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>3 · Ajustes</h2>
+    <div class="grid">
+      <label>Intervalo (segundos)
+        <input type="number" id="interval" min="1" max="120" step="1" value="3">
+      </label>
+      <label>Cambio mínimo para guardar (%)
+        <input type="number" id="sensitivity" min="0.1" max="50" step="0.1" value="1">
+      </label>
+      <label>Formato
+        <select id="format">
+          <option value="png">PNG (mejor para texto)</option>
+          <option value="jpeg">JPEG (ocupa menos)</option>
+        </select>
+      </label>
+    </div>
+  </section>
+
+  <section class="controls">
+    <button id="start" class="primary">▶ Iniciar</button>
+    <button id="stop" class="danger" disabled>■ Parar</button>
+    <button id="captureNow">Capturar ahora</button>
+  </section>
+
+  <section>
+    <div id="stats" class="stats">Guardadas: 0 · Sin cambios: 0</div>
+    <img id="thumb" class="thumb hidden" alt="Última captura">
+    <ul id="log" class="log"></ul>
+  </section>
+
+  <script src="panel.js"></script>
+</body>
+</html>
