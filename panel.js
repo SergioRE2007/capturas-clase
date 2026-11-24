@@ -1,4 +1,6 @@
 'use strict';
+// Funciones compartidas con la página de vídeos grabados (core.js).
+const { pad, dateStr, timeStr, clamp01, clampNum, withTimeout, safeName, cropRect, isBlank, compare, exists, idbGet, idbSet } = CC;
 
 // ---------- Referencias a la UI ----------
 const $ = (s) => document.querySelector(s);
@@ -20,7 +22,8 @@ const els = {
 const state = {
   root: null,            // carpeta principal (FileSystemDirectoryHandle)
   sessionDir: null,      // carpeta donde se guardan las capturas de la sesión actual
-  nextNum: 1,            // siguiente número de imagen en sessionDir
+  counter: null,         // { nextNum, usedNums } de sessionDir (siguiente número de imagen)
+  lockName: null,        // cerrojo de escritura de sessionDir (compartido con la página de vídeos)
   stream: null, track: null, imageCapture: null,
   meet: null,            // { tabId, code } de la pestaña de Meet capturada (si se conoce)
   info: null,            // última respuesta del script de Meet
@@ -53,27 +56,8 @@ function log(msg) {
   els.log.prepend(li);
   while (els.log.children.length > 80) els.log.lastChild.remove();
 }
-const pad = (n, l = 2) => String(n).padStart(l, '0');
-const dateStr = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-const timeStr = (d = new Date()) => `${pad(d.getHours())}-${pad(d.getMinutes())}-${pad(d.getSeconds())}`;
-const clamp01 = (v) => Math.min(1, Math.max(0, v));
-function clampNum(v, min, max, def) {
-  const n = Number(v);
-  return Number.isFinite(n) && v !== '' ? Math.min(max, Math.max(min, n)) : def;
-}
 const intervalMs = () => clampNum(els.interval.value, 1, 120, 3) * 1000;
 const minChange = () => clampNum(els.sensitivity.value, 0.1, 50, 1);
-function withTimeout(p, ms) {
-  let t;
-  return Promise.race([p, new Promise((_, rej) => { t = setTimeout(() => rej(new Error('tiempo agotado')), ms); })])
-    .finally(() => clearTimeout(t));
-}
-// Nombre válido de carpeta en Windows/Mac/Linux.
-function safeName(s) {
-  let n = String(s || '').normalize('NFC').replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_').trim().slice(0, 80).replace(/[. ]+$/, '');
-  if (/^(con|prn|aux|nul|com\d|lpt\d)$/i.test(n)) n = `_${n}`;
-  return n || 'otros';
-}
 function flash(el) { el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 2500); }
 
 function currentClassName() {
@@ -191,35 +175,6 @@ async function saveClassName() {
 els.saveClass.onclick = saveClassName;
 els.className.addEventListener('keydown', (e) => { if (e.key === 'Enter') saveClassName(); });
 
-// ---------- IndexedDB (para recordar la carpeta entre sesiones) ----------
-let dbPromise = null;
-function idb() {
-  if (!dbPromise) {
-    dbPromise = new Promise((res, rej) => {
-      const r = indexedDB.open('capturas-clase', 1);
-      r.onupgradeneeded = () => r.result.createObjectStore('kv');
-      r.onsuccess = () => { const db = r.result; db.onversionchange = () => { db.close(); dbPromise = null; }; res(db); };
-      r.onerror = () => { dbPromise = null; rej(r.error); };
-    });
-  }
-  return dbPromise;
-}
-async function idbGet(key) {
-  const db = await idb();
-  return new Promise((res, rej) => {
-    const q = db.transaction('kv').objectStore('kv').get(key);
-    q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error);
-  });
-}
-async function idbSet(key, val) {
-  const db = await idb();
-  return new Promise((res, rej) => {
-    const tx = db.transaction('kv', 'readwrite');
-    tx.objectStore('kv').put(val, key);
-    tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error);
-  });
-}
-
 // ---------- Carpeta ----------
 function showFolder(name, perm) {
   els.folderName.textContent = perm === 'granted' ? `📁 ${name}`
@@ -270,19 +225,12 @@ async function ensurePermission(interactive) {
   if (p !== 'granted') { log('Sin permiso para escribir en la carpeta. Vuelve a elegirla.'); flash(els.pickFolder); }
   return p === 'granted';
 }
+// La numeración continúa donde se quedó (img001, img002…) aunque reinicies.
+const dirLocks = new WeakMap();
 async function makeSessionDir() {
-  const cls = await state.root.getDirectoryHandle(safeName(currentClassName()), { create: true });
-  const lp = layoutPart();
-  const dir = lp ? await cls.getDirectoryHandle(lp, { create: true }) : cls;
-  // La numeración continúa donde se quedó (img001, img002…) aunque reinicies.
-  let max = 0;
-  state.usedNums = new Set();
-  for await (const name of dir.keys()) {
-    const m = /^img(\d+)/i.exec(name);
-    if (m) { max = Math.max(max, Number(m[1])); state.usedNums.add(Number(m[1])); }
-  }
-  state.nextNum = max + 1;
-  return dir;
+  const s = await CC.openSessionDir(state.root, currentClassName(), layoutPart());
+  state.counter = s.counter; state.lockName = s.lockName; dirLocks.set(s.dir, s.lockName);
+  return s.dir;
 }
 
 // ---------- Fuente ----------
@@ -494,25 +442,6 @@ async function grabFrame() {
   if (els.video.videoWidth) return createImageBitmap(els.video);
   throw new Error('todavía no hay imagen');
 }
-// Pasa un recorte relativo a píxeles del fotograma. En el modo automático el recorte es relativo
-// a la ventana de Meet; si el fotograma tiene bandas negras (otra proporción), se descuentan.
-function cropRect(w, h, c) {
-  let ox = 0, oy = 0, cw = w, ch = h;
-  if (c && c.vw && c.vh) {
-    const va = c.vw / c.vh, fa = w / h;
-    if (Math.abs(va - fa) / fa > 0.01) {
-      if (fa > va) { cw = h * va; ox = (w - cw) / 2; } else { ch = w / va; oy = (h - ch) / 2; }
-    }
-  }
-  const r = c || { x: 0, y: 0, w: 1, h: 1 };
-  const sx = Math.min(w - 1, Math.max(0, Math.round(ox + r.x * cw)));
-  const sy = Math.min(h - 1, Math.max(0, Math.round(oy + r.y * ch)));
-  return {
-    sx, sy,
-    sw: Math.max(1, Math.min(w - sx, Math.round(r.w * cw))),
-    sh: Math.max(1, Math.min(h - sy, Math.round(r.h * ch)))
-  };
-}
 function signature(bmp, r, crop) {
   sigCtx.imageSmoothingEnabled = true;
   sigCtx.imageSmoothingQuality = 'medium';
@@ -531,26 +460,6 @@ function signature(bmp, r, crop) {
   for (let i = 0, j = 0; i < d.length; i += 4, j += 3) { g[j] = d[i]; g[j + 1] = d[i + 1]; g[j + 2] = d[i + 2]; }
   return g;
 }
-function isBlank(sig) {
-  let max = 0;
-  for (let i = 0; i < sig.length; i++) if (sig[i] > max) { max = sig[i]; if (max > 20) return false; }
-  return true;
-}
-function compare(a, b) {
-  const tiles = new Uint16Array(TX * TY);
-  let n = 0;
-  for (let y = 0; y < SIG_H; y++) {
-    const row = y * SIG_W, trow = (y / TILE | 0) * TX;
-    for (let x = 0; x < SIG_W; x++) {
-      const k = (row + x) * 3;
-      const dd = Math.max(Math.abs(a[k] - b[k]), Math.abs(a[k + 1] - b[k + 1]), Math.abs(a[k + 2] - b[k + 2]));
-      if (dd > PIX_T) { n++; tiles[trow + (x / TILE | 0)]++; }
-    }
-  }
-  let maxT = 0;
-  for (let i = 0; i < tiles.length; i++) if (tiles[i] > maxT) maxT = tiles[i];
-  return { pct: (n * 100) / (SIG_W * SIG_H), tile: (maxT * 100) / (TILE * TILE) };
-}
 // El fotograma de la pestaña puede venir ampliado (p. ej. a 3840x2160). No tiene sentido guardar más
 // píxeles de los que la Meet muestra de verdad en pantalla: se reduce a su tamaño real.
 function outputScale(r, info, crop) {
@@ -568,32 +477,11 @@ async function encode(bmp, r, k = 1) {
     ? c.convertToBlob({ type: 'image/jpeg', quality: 0.85 })
     : c.convertToBlob({ type: 'image/png' });
 }
-async function exists(dir, name) {
-  try { await dir.getFileHandle(name); return true; } catch (e) { if (e.name === 'NotFoundError') return false; throw e; }
-}
+// Nunca se sobrescribe una imagen existente (el número se elige dentro del cerrojo de la carpeta).
 async function writeFile(dir, blob) {
-  const ext = blob.type === 'image/png' ? 'png' : 'jpg';
+  const counter = dir === state.sessionDir && state.counter ? state.counter : await CC.scanCounter(dir);
   const suffix = els.naming.value === 'numtime' ? `_${timeStr()}` : '';
-  let n = state.nextNum, name;
-  // Nunca se sobrescribe una imagen existente.
-  for (;;) {
-    name = `img${pad(n, 3)}${suffix}.${ext}`;
-    const taken = dir === state.sessionDir && state.usedNums && state.usedNums.has(n);
-    if (!taken && !(await exists(dir, name))) break;
-    n++;
-  }
-  const fh = await dir.getFileHandle(name, { create: true });
-  const w = await fh.createWritable();
-  try {
-    await w.write(blob);
-    await w.close();
-  } catch (e) {
-    await w.abort().catch(() => {});
-    await dir.removeEntry(name).catch(() => {});
-    throw e;
-  }
-  if (dir === state.sessionDir) { state.nextNum = n + 1; if (state.usedNums) state.usedNums.add(n); }
-  return name;
+  return CC.writeImage(dir, blob, { counter, suffix, lockName: dirLocks.get(dir) || state.lockName });
 }
 function showThumb(blob) {
   if (state.thumbUrl) URL.revokeObjectURL(state.thumbUrl);
@@ -724,6 +612,7 @@ async function startCapture(interactive) {
     Object.assign(state, { sessionDir: dir, lastSig: null, lastDims: null, lastRect: null, sigSize: null, saved: 0, skipped: 0, waiting: 0, errors: 0, running: true });
     saveSettings();
     ticker.postMessage({ cmd: 'start', ms: intervalMs() });
+    holdLiveLock(`cc-live:${safeName(currentClassName())}/${layoutPart()}`);
     const where = [state.root.name, safeName(currentClassName()), layoutPart()].filter(Boolean).join('/');
     log(`Capturando cada ${intervalMs() / 1000} s en ${where}`);
   } catch (e) {
@@ -739,11 +628,26 @@ function stopCapture(reason) {
   if (!state.running) return;
   state.gen++;
   ticker.postMessage({ cmd: 'stop' });
+  holdLiveLock(null);
   state.running = false;
   state.sessionDir = null;
   updateUI();
   log(`${reason ? `${reason} ` : ''}Parado. ${state.saved} capturas guardadas.`);
 }
+// Mientras se captura, la carpeta queda marcada (la página de vídeos grabados avisa si va a escribir en ella).
+function holdLiveLock(name) {
+  if (state.releaseLive) { state.releaseLive(); state.releaseLive = null; }
+  if (name && navigator.locks) navigator.locks.request(name, () => new Promise((r) => { state.releaseLive = r; })).catch(() => {});
+}
+// Abre (o trae delante) la página «Procesar vídeos grabados».
+$('#openVideo').onclick = async () => {
+  try {
+    const url = chrome.runtime.getURL('video.html');
+    const [ctx] = await chrome.runtime.getContexts({ contextTypes: ['TAB'], documentUrls: [url] });
+    if (ctx) { await chrome.tabs.update(ctx.tabId, { active: true }); await chrome.windows.update(ctx.windowId, { focused: true }); }
+    else await chrome.tabs.create({ url });
+  } catch (e) { log(`No se pudo abrir la página de vídeos: ${e.message}`); }
+};
 els.start.onclick = () => startCapture(true);
 els.stop.onclick = () => stopCapture();
 els.captureNow.onclick = async () => {

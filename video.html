@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Procesar vídeos grabados</title>
+  <link rel="stylesheet" href="panel.css">
+  <link rel="stylesheet" href="video.css">
+</head>
+<body>
+  <header>
+    <h1>🎞 Procesar vídeos grabados</h1>
+    <p class="hint">Saca las diapositivas y pantallas de clases de Meet grabadas (.webm o .mp4), sin repetir imágenes, mucho más rápido que verlas.
+      <b>Deja esta pestaña abierta (puede estar en segundo plano).</b></p>
+  </header>
+
+  <section>
+    <h2>1 · Carpeta principal</h2>
+    <div class="row">
+      <button id="pickFolder">Cambiar…</button>
+      <span id="folderName" class="muted">Ninguna carpeta elegida</span>
+    </div>
+    <p id="pathPreview" class="muted small"></p>
+  </section>
+
+  <section>
+    <h2>2 · Vídeos</h2>
+    <div id="drop" class="drop">
+      <button id="addFiles">+ Añadir vídeos…</button>
+      <span class="muted">o arrastra aquí los archivos</span>
+      <input type="file" id="files" multiple accept=".webm,.mp4,.mkv,video/*" class="hidden">
+    </div>
+    <div class="row">
+      <label class="inline">Clase para todos
+        <input id="claseAll" list="claseList" placeholder="p. ej. Programación" autocomplete="off">
+      </label>
+      <button id="applyClase">Aplicar a todos</button>
+    </div>
+    <datalist id="claseList"></datalist>
+    <div id="queue" class="queue"></div>
+  </section>
+
+  <section>
+    <h2>3 · Ajustes</h2>
+    <div class="grid">
+      <label>Qué guardar
+        <select id="vmode">
+          <option value="equilibrado" title="Cada diapositiva / pantalla una vez, ya asentada">Equilibrado</option>
+          <option value="final" title="Para clases de programación: guarda lo escrito cuando el profe para o pasa a otra cosa">Solo la versión final</option>
+          <option value="todas" title="Como en directo">Todas las versiones</option>
+        </select>
+      </label>
+      <label>Mirar cada … s del vídeo
+        <input type="number" id="vstep" min="0.5" max="5" step="0.5" value="1">
+      </label>
+      <label>Cambio mínimo (%)
+        <input type="number" id="vmin" min="0.1" max="50" step="0.1" value="1">
+      </label>
+      <label>Formato
+        <select id="vformat">
+          <option value="png">PNG (mejor para texto)</option>
+          <option value="jpeg">JPEG (ocupa menos)</option>
+        </select>
+      </label>
+      <label>Carpetas
+        <select id="vlayout">
+          <option value="day">Una por día</option>
+          <option value="session">Una por día (…_grabacion)</option>
+          <option value="flat">Todo junto</option>
+        </select>
+      </label>
+      <label>Nombre
+        <select id="vnaming">
+          <option value="vidtime">img001_p1_00h12m30s</option>
+          <option value="num">img001</option>
+        </select>
+      </label>
+    </div>
+    <label class="check"><input type="checkbox" id="vtaskbar"> Quitar la barra de tareas (pantalla completa compartida)</label>
+  </section>
+
+  <section id="cropSec" class="hidden">
+    <h2>Recorte manual · <span id="cropFile"></span></h2>
+    <div id="cropStage" class="stage manual"><img id="cropImg" alt=""><div id="cropBox" class="crop hidden"></div></div>
+    <div class="row small">
+      <span class="muted">Arrastra sobre la imagen para elegir la zona de la presentación.</span>
+      <label class="check"><input type="checkbox" id="cropAlways"> Siempre es presentación</label>
+    </div>
+    <div class="row">
+      <button id="cropOne" class="primary">Solo este vídeo</button>
+      <button id="cropSize">Todos los de este tamaño (<span id="cropDims"></span>)</button>
+      <button id="cropClear">Quitar recorte</button>
+      <button id="cropClose" class="link">Cerrar</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>4 · Proceso</h2>
+    <div id="liveWarn" class="warn hidden"></div>
+    <div class="controls">
+      <button id="start" class="primary" disabled>▶ Empezar</button>
+      <button id="cancel" class="danger" disabled>■ Cancelar</button>
+    </div>
+    <div id="global" class="stats"></div>
+    <div id="counters" class="muted small"></div>
+    <div id="strip" class="strip"></div>
+    <ul id="log" class="log"></ul>
+  </section>
+
+  <script src="core.js"></script>
+  <script src="vnames.js"></script>
+  <script src="video.js"></script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+/* Página «Procesar vídeos grabados»: más ancha que el panel; reutiliza los colores de panel.css. */
+body { max-width: 1100px; margin: 0 auto; }
+input[type=date], input[type=text] {
+  background: var(--bg); color: var(--text); border: 1px solid var(--border);
+  border-radius: 6px; padding: 4px 6px; font: inherit; width: 100%; color-scheme: dark;
+}
+.drop { display: flex; gap: 10px; align-items: center; border: 1px dashed var(--border); border-radius: 8px; padding: 12px; }
+.drop.over { border-color: var(--accent); background: rgba(79, 140, 255, .08); }
+.queue { margin-top: 10px; overflow-x: auto; }
+.queue table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.queue th { text-align: left; color: var(--muted); font-weight: 500; padding: 4px; border-bottom: 1px solid var(--border); }
+.queue td { padding: 4px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.queue td.num input { width: 52px; }
+.queue td.clase input { min-width: 110px; }
+.queue td.tema input { min-width: 120px; }
+.queue img.mini { width: 96px; border-radius: 4px; display: block; }
+.queue tr.group td { background: rgba(255, 255, 255, .03); color: var(--text); font-weight: 600; padding-top: 10px; }
+.queue tr.group .muted { font-weight: 400; }
+.queue tr.ambig td { padding: 6px 4px; }
+.queue input.bad { border-color: var(--danger); }
+.queue .status { min-width: 150px; }
+.bar { height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; margin-top: 3px; }
+.bar > i { display: block; height: 100%; width: 0; background: var(--accent); }
+.result td { background: rgba(0, 0, 0, .15); }
+.timeline { position: relative; height: 16px; background: var(--bg); border-radius: 4px; overflow: hidden; margin: 4px 0 2px; }
+.timeline span { position: absolute; top: 0; bottom: 0; }
+.timeline .PRESENT { background: var(--ok); }
+.timeline .NONE { background: #4a4f5c; }
+.timeline .PARTICIPANT { background: #2a9d9a; }
+.timeline .UNSTABLE, .timeline .LOWQ { background: var(--warn); }
+.timeline .UNKNOWN, .timeline .DECODE_ERROR { background: var(--danger); }
+.timeline b { position: absolute; top: 0; width: 1px; height: 5px; background: #fff; }
+.segthumbs { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.segthumbs figure { position: relative; margin: 0; }
+.segthumbs canvas { display: block; border: 2px solid var(--border); border-radius: 4px; }
+.segthumbs canvas.amber { border-color: var(--warn); }
+.strip { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; }
+.strip img { height: 54px; border-radius: 3px; border: 1px solid var(--border); cursor: pointer; }
+.stage img { width: 100%; height: 100%; display: block; pointer-events: none; }
+.mini-btns button { padding: 2px 6px; font-size: 12px; }
+#global { margin-top: 10px; }

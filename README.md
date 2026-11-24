@@ -58,10 +58,48 @@ pulsa **▶ Iniciar** y acepta.
 - **Capturar ahora**: guarda una captura aunque no haya cambiado nada.
 - **Clases guardadas**: lista de enlaces de Meet ↔ clase; puedes olvidar alguno.
 
+## Procesar vídeos grabados
+Si tienes clases de Meet **grabadas** (archivos `.webm` o `.mp4`, p. ej. con una extensión de grabar pantalla),
+la extensión puede sacar de ellas las diapositivas y pantallas, igual que en directo pero mucho más rápido
+(un vídeo de una hora tarda unos minutos).
+
+1. En el panel, pulsa **🎞 Procesar vídeos grabados…**. Se abre una pestaña.
+2. **Carpeta principal**: usa la del panel (o elige otra con «Cambiar…»).
+3. **+ Añadir vídeos…** (o arrástralos). De cada nombre se saca la **fecha** y la **parte**:
+   `9-11 PARTE 2.webm` → 9 de noviembre, parte 2. Revisa la tabla: clase, fecha, parte y tema se pueden cambiar.
+   - Escribe la **clase** (o «Clase para todos» → Aplicar a todos).
+   - Si hay dos vídeos del mismo día sin «parte», ordénalos con ▲▼ y pulsa **Confirmar orden**.
+4. **▶ Empezar**. Deja la pestaña abierta (puede estar en segundo plano).
+
+Las imágenes van a `<carpeta>/<clase>/<fecha>/img001_p1_00h12m30s.png` (el tiempo es el del vídeo). La numeración
+sigue la de la carpeta, así que las partes del mismo día quedan seguidas y no se repite la imagen del final de
+una parte al principio de la siguiente. En cada carpeta se guarda `.capturas-clase.json` con lo procesado: si
+vuelves a añadir un vídeo ya hecho, te lo avisa.
+
+**Qué guardar**:
+- *Equilibrado* (por defecto): cada diapositiva / pantalla una vez, cuando ya está quieta.
+- *Solo la versión final*: para clases de programación; guarda lo escrito cuando el profe para o pasa a otra cosa.
+- *Todas las versiones*: como en directo (muchas más imágenes).
+
+Cómo funciona: el vídeo se lee de principio a fin una sola vez (WebCodecs; no se sube nada a ningún sitio).
+La presentación se localiza con la interfaz de Meet que sale en la grabación (el botón rojo de colgar y el
+fondo oscuro), así que funciona aunque la grabación incluya la barra del navegador. Al comparar se ignoran tu
+propia miniatura, las barras flotantes de Meet y el cursor. Cuando nadie presenta (o se ve la cámara de alguien)
+no se guarda nada; la línea de tiempo de cada vídeo lo muestra en colores. Si la detección falla, usa
+**✂ Recorte manual** en la fila del vídeo.
+
+Limitaciones: solo grabaciones de Meet con el tema oscuro; códecs VP8, VP9, AV1 y H.264 (HEVC no).
+
 ## Cómo detecta si ha cambiado
-Reduce cada captura a 256×144 en escala de grises y la compara con la última guardada. Un píxel cuenta como
-cambiado si varía más de 24 niveles (así ignora el ruido de compresión del vídeo de Meet). Guarda si el % de
-píxeles cambiados supera el umbral o si alguna zona pequeña (8×8 de la miniatura) cambia más de un 12 %.
+Reduce cada captura a 256×144 en color (R, G y B) y la compara con la última guardada. Un píxel cuenta como
+cambiado si algún canal varía más de 24 niveles (así ignora el ruido de compresión del vídeo de Meet). Guarda si
+el % de píxeles cambiados supera el umbral o si alguna zona pequeña (8×8 de la miniatura) cambia un 10 % o más.
+
+## Pruebas (desarrollo)
+- `node --test tests/`: pruebas unitarias (Node 20 o superior, sin dependencias).
+- `node tools/run-video.mjs <vídeo> <carpetaSalida> [--mode equilibrado|final|todas] [--clase X] [--tmp dir]`:
+  procesa vídeos con el código real de la extensión en un Edge sin ventana y deja las imágenes, las hojas de
+  contactos `_sheet_*.png` y `report.json` en la carpeta de salida.
 
 ## Permisos que pide
 Al instalarla, Edge/Chrome muestra el aviso **«Leer y cambiar todos los datos en todos los sitios web»**.

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Capturas de Clase",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Captura lo que comparte el profesor en Google Meet, solo cuando cambia, y lo guarda en una carpeta por asignatura.",
   "permissions": ["tabCapture", "storage", "scripting"],
   "host_permissions": ["https://meet.google.com/*"],
